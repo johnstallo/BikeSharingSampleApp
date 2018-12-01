@@ -1,0 +1,140 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+hostedSql:
+  enabled: true
+  password: "!DummyPassword123!"
+hostedRabbit:
+  enabled: true
+hostedMongo:
+  enabled: true
+hostedServiceBus:
+  enabled: true
+
+contoso-bikerental-devsite:
+  serviceType: LoadBalancer
+  replicaCount: 1
+  hostName: stevenry-projtest.z2.azproj.io
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  dependencies:
+    gateway:
+      dnsName: contoso-bikerental-gateway
+
+contoso-bikerental-gateway:
+  serviceType: ClusterIP
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  dependencies:
+    users:
+      dnsName: contoso-bikerental-users
+    bikes:
+      dnsName: contoso-bikerental-bikes
+    reservations:
+      dnsName: contoso-bikerental-reservations
+    billing:
+      dnsName: contoso-bikerental-billing
+    notification:
+      connectionString: amqp://<>-contoso-bikerental-rabbit
+      exchangeName: out
+    serviceBus:
+      connectionString: amqp://admin:admin@<>-contoso-bikerental-servicebus
+      queue: testqueue
+    applicationInsights:
+      instrumentationKey: 00000000-0000-0000-0000-000000000000
+
+contoso-bikerental-bikes:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  mongo:
+    collection: bikes
+    connectionString: mongodb://<>-contoso-bikerental-mongo
+
+contoso-bikerental-reservationengine:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  dependencies:
+    serviceBus:
+      connectionString: amqp://admin:admin@<>-contoso-bikerental-servicebus
+      queue: testqueue
+    bikes:
+      dnsName: contoso-bikerental-bikes
+    billing:
+      dnsName: contoso-bikerental-billing
+    notification:
+      connectionString: amqp://<>-contoso-bikerental-rabbit
+      exchangeName: in
+      routingKey: reservation
+    mongo:
+      connectionString: mongodb://<>-contoso-bikerental-mongo
+      dbName: resdb
+      collection: reservation
+
+contoso-bikerental-users:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  dependencies:
+    sql:
+      username: SA
+      password: "!DummyPassword123!"
+      server: <>-contoso-bikerental-sql
+      database: tempdb
+      table: myTable
+
+contoso-bikerental-reservations:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  mongo:
+    connectionString: mongodb://<>-contoso-bikerental-mongo
+    dbName: resdb
+    collection: reservation
+
+contoso-bikerental-billing:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  mongo:
+    connectionString: mongodb://<>-contoso-bikerental-mongo
+    dbName: billing
+
+contoso-bikerental-notification:
+  replicaCount: 1
+  image:
+    repository: stevenry
+    tag: latest
+    pullPolicy: Always
+    repoCredsSecretName:
+  inAmqp:
+    connectionString: amqp://<>-contoso-bikerental-rabbit
+    exchangeName: in
+    bindingKey: reservation
+    consumerTagOverride:
+  outAmqp:
+    connectionString: amqp://<>-contoso-bikerental-rabbit
+    exchangeName: out
